@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Travesía: Trivia</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; user-select: none; }
+        body { 
+            margin: 0; padding: 15px 10px; 
+            background: linear-gradient(135deg, #1f2937 0%, #111827 50%, #030712 100%);
+            color: #f3f4f6; display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 100vh; 
+        }
+        header { 
+            width: 100%; max-width: 400px; display: flex; justify-content: space-between; align-items: center; 
+            background: #1f2937; padding: 10px 16px; border-radius: 25px; border: 3px solid #d97706; 
+        }
+        .app-title { font-size: 1rem; font-weight: 900; color: #fbbf24; }
+        .audio-btn { background: #b45309; border: none; border-radius: 20px; color: white; padding: 6px 14px; font-size: 0.8rem; font-weight: 800; cursor: pointer; }
+        .stats-bar { 
+            width: 100%; max-width: 400px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(31, 41, 55, 0.6); padding: 8px 16px; border-radius: 15px; color: #fbbf24; font-weight: 800; font-size: 0.9rem; border: 1px dashed #d97706;
+        }
+        .quiz-card { 
+            background: #1f2937; width: 100%; max-width: 400px; border-radius: 24px; padding: 20px 16px; 
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4); text-align: center; margin: 5px 0 15px 0; border: 2px solid #374151;
+        }
+        .category-badge {
+            display: inline-block; background: #d97706; color: white; font-weight: 900; font-size: 0.75rem;
+            padding: 5px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 10px;
+        }
+        .emoji-icon { font-size: 48px; margin: 5px 0; }
+        .question-title { font-size: 1.15rem; color: #f9fafb; font-weight: 800; line-height: 1.35; margin-bottom: 5px; }
+        .action-box { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-option { 
+            background: #374151; border: 3px solid #4b5563; padding: 14px 16px; border-radius: 18px; 
+            font-size: 0.92rem; font-weight: 800; color: #f9fafb; cursor: pointer; text-align: left; 
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; z-index: 100; text-align: center; }
+        .modal-box { background: #1f2937; border-radius: 25px; padding: 25px 20px; max-width: 340px; width: 100%; border: 3px solid #d97706; color: #fff; }
+        .next-btn { background: #059669; border: none; color: white; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 16px; cursor: pointer; margin-top: 15px; width: 100%; }
+        .chest-container { position: relative; width: 100px; height: 90px; margin: 15px auto; }
+        .chest-base { width: 100px; height: 55px; background: #b45309; border: 4px solid #fbbf24; border-radius: 0 0 14px 14px; position: absolute; bottom: 0; }
+        .chest-lid { width: 104px; height: 35px; background: #92400e; border: 4px solid #fbbf24; border-radius: 14px 14px 0 0; position: absolute; top: 5px; left: -2px; transform-origin: top; transition: transform 1s; z-index: 3; }
+        .chest-open .chest-lid { transform: rotateX(-115deg); }
+        .coins { font-size: 34px; position: absolute; top: 12px; left: 20px; opacity: 0; transition: opacity 0.8s 0.4s; z-index: 2; }
+        .chest-open .coins { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="app-title">⚓ TRAVESÍA: TRIVIA</div>
+        <button class="audio-btn" id="audio-toggle" onclick="toggleLofi()">🎧 Lo-Fi: OFF</button>
+    </header>
+
+    <div class="stats-bar">
+        <span id="progress-txt">Misión 1 / 10</span>
+        <span id="score-txt">⭐ Aciertos: 0</span>
+    </div>
+
+    <div class="quiz-card" id="card-content">
+        <div class="category-badge">HISTORIA Y GEOGRAFÍA</div>
+        <div class="emoji-icon" id="card-emoji">🗺️</div>
+        <div class="question-title" id="card-title">Cargando...</div>
+    </div>
+
+    <div class="action-box" id="buttons-container"></div>
+
+    <div class="modal" id="modal">
+        <div class="modal-box">
+            <h2 id="modal-title" style="margin-top:0;">¡Respuesta!</h2>
+            <p id="modal-desc" style="font-size: 0.95rem; color: #d1d5db;"></p>
+            <button class="next-btn" onclick="nextStage()">Continuar ➔</button>
+        </div>
+    </div>
+
+    <script>
+        const stages = [
+            {
+                emoji: "🗺️", title: "1. ¿Por qué Europa buscó rutas alternativas en el siglo XV?",
+                choices: [
+                    { text: "🐪 Porque querían viajar en camello.", correct: false, msg: "¡Incorrecto! El viaje terrestre era inviable." },
+                    { text: "⛵ Por el bloqueo comercial otomano en las rutas asiáticas.", correct: true, msg: "¡Correcto! El bloqueo motivó a buscar caminos por el Atlántico." },
+                    { text: "🎈 Porque buscaban probar barcos voladores.", correct: false, msg: "¡Incorrecto! Faltaban siglos para la aviación." }
+                ]
+            },
+            {
+                emoji: "🧭", title: "2. ¿Qué tecnología clave evitaba que los marinos se perdieran?",
+                choices: [
+                    { text: "🧭 La brújula y el astrolabio.", correct: true, msg: "¡Excelente! Permitían orientarse con los astros." },
+                    { text: "🔦 Encender antorchas en los mástiles.", correct: false, msg: "¡Incorrecto! Eso no ayudaba a calcular el rumbo." },
+                    { text: "🐶 Guiarse por el olfato de las mascotas.", correct: false, msg: "¡Incorrecto! En medio del océano era imposible." }
+                ]
+            },
+            {
+                emoji: "👑", title: "3. ¿Qué buscaban los Reyes de España al financiar expediciones?",
+                choices: [
+                    { text: "🐟 Conseguir agua salada de mar.", correct: false, msg: "¡Incorrecto! No tenía valor económico." },
+                    { text: "🎪 Contratar artistas para los palacios.", correct: false, msg: "¡Incorrecto! Buscaban dominio comercial." },
+                    { text: "👑 Reclamar tierras, soberanía y metales preciosos.", correct: true, msg: "¡Muy bien! Acumulaban riquezas y dominios." }
+                ]
+            },
+            {
+                emoji: "⛵", title: "4. ¿Cuál fue la embarcación estrella del siglo XV por su agilidad?",
+                choices: [
+                    { text: "⛵ La carabela con velas latinas.", correct: true, msg: "¡Correcto! Sus velas permitían maniobrar mejor." },
+                    { text: "🚣 Botes de remo tradicional.", correct: false, msg: "¡Incorrecto! Imposible cruzar el Atlántico a remos." },
+                    { text: "⚓ Barcos pesados de transporte local.", correct: false, msg: "¡Incorrecto! Eran demasiado lentos." }
+                ]
+            },
+            {
+                emoji: "📜", title: "5. ¿Qué acuerdo dividió las zonas de exploración entre España y Portugal?",
+                choices: [
+                    { text: "📜 El Tratado de Tordesillas.", correct: true, msg: "¡Exacto! Trazó una línea imaginaria en el Atlántico." },
+                    { text: "⚔️ La Declaración de Guerra Total.", correct: false, msg: "¡Incorrecto! Se optó por la diplomacia." },
+                    { text: "🎲 Un sorteo de juego de azar.", correct: false, msg: "¡Incorrecto! Fue un tratado geopolítico formal." }
+                ]
+            },
+            {
+                emoji: "🌏", title: "6. ¿Qué sorpresa inesperada hallaron en la ruta hacia el Oeste?",
+                choices: [
+                    { text: "🧱 Un muro de piedra en el horizonte.", correct: false, msg: "¡Incorrecto! La Tierra es esférica." },
+                    { text: "🛑 Un continente desconocido (América).", correct: true, msg: "¡Correcto! El bloque americano se interpuso." },
+                    { text: "🌀 Un gran remolino espacial.", correct: false, msg: "¡Incorrecto! Eso es pura fantasía." }
+                ]
+            },
+            {
+                emoji: "🌿", title: "7. ¿Por qué las especias asiáticas valían casi tanto como el oro?",
+                choices: [
+                    { text: "🌿 Para conservar carnes y saborizar alimentos.", correct: true, msg: "¡Excelente! Eran vitales al no haber heladeras." },
+                    { text: "🪵 Para ahuyentar insectos en los barcos.", correct: false, msg: "¡Incorrecto! Su alto valor era culinario." },
+                    { text: "🎨 Para fabricar pintura de cuadros.", correct: false, msg: "¡Incorrecto! Eran bienes de consumo." }
+                ]
+            },
+            {
+                emoji: "💣", title: "8. ¿Cómo se preparaban los barcos ante ataques de piratas?",
+                choices: [
+                    { text: "🎈 Atando globos de aire caliente.", correct: false, msg: "¡Incorrecto! No existía esa tecnología." },
+                    { text: "💣 Montando cañones de bronce e infantería.", correct: true, msg: "¡Muy bien! Iban fuertemente artillados." },
+                    { text: "🪃 Lanzando escudos de madera.", correct: false, msg: "¡Incorrecto! Armas inadecuadas para altamar." }
+                ]
+            },
+            {
+                emoji: "🗺️", title: "9. ¿Qué aporte realizó Américo Vespucio a la navegación?",
+                choices: [
+                    { text: "🌍 Demostró que las tierras halladas eran un Nuevo Mundo.", correct: true, msg: "¡Correcto! De ahí derivó el nombre de América." },
+                    { text: "🗺️ Creó el primer mapa exclusivo de Europa.", correct: false, msg: "¡Incorrecto! Identificó la masa continental." },
+                    { text: "👑 Se proclamó monarca absoluto.", correct: false, msg: "¡Incorrecto! Era un explorador." }
+                ]
+            },
+            {
+                emoji: "🌴", title: "10. ¿Qué hito histórico provocó la llegada europea a América?",
+                choices: [
+                    { text: "👻 La retirada inmediata de las tripulaciones.", correct: false, msg: "¡Incorrecto! Se iniciaron asentamientos." },
+                    { text: "🤖 El aislamiento comercial definitivo.", correct: false, msg: "¡Incorrecto! Se aceleró el intercambio." },
+                    { text: "🤝 El encuentro de dos mundos y la conquista.", correct: true, msg: "¡Exacto! Transformó las estructuras globales." }
+                ]
+            }
+        ];
+
+        let currentStage = 0, correctAnswers = 0, audioCtx = null, lofiEnabled = false, lofiTimer = null;
+
+        window.onload = loadStage;
+
+        function toggleLofi() {
+            lofiEnabled = !lofiEnabled;
+            document.getElementById('audio-toggle').textContent = lofiEnabled ? "🎧 Lo-Fi: ON" : "🎧 Lo-Fi: OFF";
+            if (lofiEnabled) startLofi(); else stopLofi();
+        }
+
+        function startLofi() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const notes = [220, 246, 293, 329, 392, 440];
+                let i = 0;
+                lofiTimer = setInterval(() => {
+                    if (!lofiEnabled) return;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(notes[i], audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.3);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(); osc.stop(audioCtx.currentTime + 1.0);
+                    i = (i + 1) % notes.length;
+                }, 600);
+            } catch(e){}
+        }
+
+        function stopLofi() { clearInterval(lofiTimer); }
+
+        function loadStage() {
+            const s = stages[currentStage];
+            document.getElementById('progress-txt').textContent = `Misión ${currentStage + 1} / 10`;
+            document.getElementById('score-txt').textContent = `⭐ Aciertos: ${correctAnswers}`;
+            document.getElementById('card-emoji').textContent = s.emoji;
+            document.getElementById('card-title').textContent = s.title;
+            
+            const container = document.getElementById('buttons-container');
+            container.innerHTML = "";
+            s.choices.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = "btn-option";
+                btn.innerHTML = `<span>${c.text}</span><span>➔</span>`;
+                btn.onclick = () => makeChoice(c.correct, c.msg);
+                container.appendChild(btn);
+            });
+        }
+
+        function makeChoice(isCorrect, msg) {
+            if (isCorrect) correctAnswers++;
+            document.getElementById('modal-title').textContent = isCorrect ? "¡CORRECTO! 🌸" : "¡INCORRECTO! 🍃";
+            document.getElementById('modal-title').style.color = isCorrect ? "#059669" : "#dc2626";
+            document.getElementById('modal-desc').textContent = msg;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function nextStage() {
+            document.getElementById('modal').style.display = 'none';
+            currentStage++;
+            if (currentStage < stages.length) {
+                loadStage();
+            } else {
+                document.getElementById('progress-txt').textContent = "¡Completado!";
+                let passed = correctAnswers >= 7;
+                document.getElementById('card-content').innerHTML = `
+                    <div class="category-badge" style="background:${passed ? '#059669' : '#dc2626'}">${passed ? '¡VICTORIA!' : '¡FIN!'}</div>
+                    <div class="chest-container ${passed ? 'chest-open' : ''}">
+                        <div class="coins">💰💎🪙</div>
+                        <div class="chest-lid"></div>
+                        <div class="chest-base"></div>
+                    </div>
+                    <div class="question-title" style="color:${passed ? '#059669' : '#dc2626'}; font-size:1.2rem; margin-top:10px;">
+                        ${passed ? '¡ABRISTE EL COFRE!' : 'COFRE CERRADO'}
+                    </div>
+                    <p style="font-size: 0.9rem; color: #d1d5db; margin-top:10px;">
+                        Aciertos: <b>${correctAnswers} / 10</b><br>
+                        ${passed ? '¡Excelente trabajo, dominaste la misión!' : 'Más de 3 fallos. ¡Inténtalo de nuevo!'}
+                    </p>
+                `;
+                document.getElementById('buttons-container').innerHTML = `
+                    <bu<form>p</form>tton class="next-btn" style="margin-top:0;" onclick="location.reload()">🔄 REINICIAR</button>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
